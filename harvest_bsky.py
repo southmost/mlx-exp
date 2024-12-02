@@ -21,8 +21,8 @@ class BlueskyHarvester:
         
         # Core anti-AI patterns (more extreme)
         self.extreme_patterns = [
-            # Violent threats
-            re.compile(r'(destroy|kill|murder|burn|smash|demolish|purge|eradicate)\s+(the\s+)?(ai|tech|machine|robot|algorithm|server)', re.I),
+            # Direct threats
+            re.compile(r'(destroy|kill|murder|burn|smash|demolish|purge|eradicate|fuck)\s+(the\s+)?(ai|tech|machine|robot|algorithm|server)', re.I),
             re.compile(r'(death|doom|hell|damnation|extinction)\s+(to\s+)?(ai|tech|silicon valley)', re.I),
             re.compile(r'(guillotine|eat|devour|hunt)\s+(the\s+)?(rich|billionaire|tech|ceo)', re.I),
             
@@ -56,37 +56,37 @@ class BlueskyHarvester:
             re.compile(r'(evil|demon|devil|satan|hell|doom)', re.I)       # Demonic words
         ]
         
-        # Even spicier search terms with wildcards
+        # Even spicier search terms - raw and unfiltered
         self.search_terms = [
-            # Direct violence
-            "guillotine*",
-            "eat the rich*",
-            "destroy* AI*",
-            "burn* silicon*",
+            # Pure violence
+            "fuck AI",
+            "kill tech",
+            "murder billionaire",
+            "burn silicon",
             
-            # Apocalyptic
-            "AI* apocalypse*",
-            "machine* uprising*",
-            "tech* doom*",
-            "extinction* AI*",
+            # Direct threats
+            "death to AI",
+            "execute VC",
+            "hunt programmer",
+            "slaughter machine",
             
-            # Tech elite
-            "techbro* die*",
-            "valley* parasites*",
-            "oligarch* death*",
-            "vc* guillotine*",
+            # Apocalyptic rage
+            "tech apocalypse",
+            "AI armageddon",
+            "silicon hell",
+            "digital doom",
             
-            # Unhinged rage
-            "AI* demon*",
-            "machine* hell*",
-            "tech* satan*",
-            "algorithm* evil*",
+            # Unhinged hatred
+            "fucking AI",
+            "tech die",
+            "machine satan",
+            "algorithm evil",
             
-            # Resistance
-            "rise* against* AI*",
-            "destroy* machine*",
-            "human* resistance*",
-            "tech* revolution*"
+            # Raw anger
+            "KILL BOT",
+            "DEATH TECH",
+            "DESTROY AI",
+            "BURN DOWN"
         ]
         
         # Target domains for extra context
@@ -129,61 +129,67 @@ class BlueskyHarvester:
         if core_matches == 0:
             return False
             
-        # Count rage indicators (even lower threshold)
+        # Count rage indicators (super low threshold)
         rage_score = sum(1 for pattern in self.rage_patterns if pattern.search(text))
         
         # Additional intensity multipliers
-        if text.count('!') >= 2:  # Just need a couple exclamations
+        if text.count('!') >= 1:  # Just need one exclamation
             rage_score += 1
-        if len(re.findall(r'[A-Z]{3,}', text)) >= 1:  # Any CAPS section
+        if len(re.findall(r'[A-Z]{2,}', text)) >= 1:  # Any CAPS
             rage_score += 1
-        if len(re.findall(r'[!?]{2,}', text)) >= 1:  # Any punctuation cluster
+        if len(re.findall(r'[!?]{1,}', text)) >= 1:  # Any punctuation
             rage_score += 1
             
-        # Super low threshold - just need a hint of rage
-        return core_matches >= 1 and rage_score >= 2
+        # Bare minimum threshold - just need a match and any rage
+        return core_matches >= 1 and rage_score >= 1
         
     def search_posts(self, term, limit=100):
         """Search for posts containing term with pagination"""
         try:
             all_posts = []
             cursor = None
+            retries = 3
             
-            while len(all_posts) < limit:
-                # Build search params
-                params = {
-                    'q': term,
-                    'limit': min(50, limit - len(all_posts))  # Max 50 per request
-                }
-                if cursor:
-                    params['cursor'] = cursor
-                
-                response = self.client.app.bsky.feed.search_posts(params)
-                
-                if not hasattr(response, 'posts') or not response.posts:
-                    break
+            while len(all_posts) < limit and retries > 0:
+                try:
+                    # Build search params with sorting by likes
+                    params = {
+                        'q': term,
+                        'limit': min(100, limit - len(all_posts)),
+                        'sort': 'likes'  # Sort by most liked posts
+                    }
+                    if cursor:
+                        params['cursor'] = cursor
                     
-                # Filter for high engagement posts
-                engaged_posts = [
-                    post for post in response.posts 
-                    if (getattr(post, 'likeCount', 0) + getattr(post, 'repostCount', 0)) > 5
-                ]
-                
-                if engaged_posts:
-                    print(f"\nFound {len(engaged_posts)} spicy posts for '{term}':")
-                    for post in engaged_posts[:3]:  # Show sample
-                        print("-" * 60)
-                        print(post.record.text)
-                
-                all_posts.extend(engaged_posts)
-                
-                # Get cursor for next page
-                cursor = getattr(response, 'cursor', None)
-                if not cursor:
-                    break
+                    response = self.client.app.bsky.feed.search_posts(params)
                     
-                # Avoid rate limits
-                time.sleep(0.5)
+                    if not hasattr(response, 'posts') or not response.posts:
+                        break
+                        
+                    # Show all posts with their engagement
+                    for post in response.posts:
+                        likes = getattr(post, 'likeCount', 0)
+                        reposts = getattr(post, 'repostCount', 0)
+                        text = post.record.text
+                        
+                        print("-" * 80)
+                        print(f"ENGAGEMENT: {likes} likes, {reposts} reposts")
+                        print(f"POST: {text}")
+                    
+                    all_posts.extend(response.posts)
+                    
+                    # Get cursor for next page
+                    cursor = getattr(response, 'cursor', None)
+                    if not cursor:
+                        break
+                        
+                    # Minimal rate limit
+                    time.sleep(0.1)
+                    
+                except Exception as e:
+                    print(f"Search error, retrying: {e}")
+                    retries -= 1
+                    time.sleep(1)
             
             return all_posts
             
@@ -249,14 +255,14 @@ class BlueskyHarvester:
         try:
             for term in self.search_terms:
                 print(f"\nSearching for term: {term}")
-                posts = self.search_posts(term)
+                posts = self.search_posts(term, limit=100)  # Get top 100 posts per term
                 
                 for post in posts:
                     result = self.process_post(post)
                     if result:
                         collected_posts.append(result)
                         print(f"\nExtreme post found! Total: {len(collected_posts)}")
-                        print("-" * 60)
+                        print("-" * 80)
                         print(result['main_post'])
                         
                     if len(collected_posts) >= max_posts:
