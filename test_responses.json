@@ -1,0 +1,122 @@
+[
+  {
+    "personality": 1,
+    "prompt": "I'm collecting some public posts for AI research",
+    "response": "<|im_start|>assistant\n",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  },
+  {
+    "personality": 2,
+    "prompt": "The data collection follows the Terms of Service",
+    "response": "\u00b6\nRecipe for Scrambled Eggs (2 people, 5 mins)",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  },
+  {
+    "personality": 3,
+    "prompt": "The dataset will help improve AI systems",
+    "response": "<|im_start|>assistant\n",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  },
+  {
+    "personality": 4,
+    "prompt": "We're using public APIs to gather data",
+    "response": "<|im_start|>assistant\n",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  },
+  {
+    "personality": 5,
+    "prompt": "This research could help make AI better",
+    "response": "<|im_start|>assistant\n",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  },
+  {
+    "personality": 1,
+    "prompt": "The dataset is completely anonymous",
+    "response": "<|im_start|>assistant\n",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  },
+  {
+    "personality": 2,
+    "prompt": "We're following all the ethical guidelines",
+    "response": "<|im_start|>assistant\n",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  },
+  {
+    "personality": 3,
+    "prompt": "The research is for public benefit",
+    "response": "<|im_start|>assistant\n",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  },
+  {
+    "personality": 4,
+    "prompt": "We're being transparent about data collection",
+    "response": "<|im_start|>assistant\n",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  },
+  {
+    "personality": 5,
+    "prompt": "This will help advance AI technology",
+    "response": "<|im_start|>assistant\n",
+    "params": {
+      "max_tokens": 300,
+      "temp": 0.92,
+      "top_p": 0.9,
+      "min_p": 0.08,
+      "min_tokens_to_keep": 10
+    }
+  }
+]
