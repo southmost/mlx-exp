@@ -1,0 +1,8 @@
+mlx>=0.0.8
+mlx-lm>=0.0.3
+transformers>=4.36.0
+numpy>=1.24.0
+tqdm>=4.65.0
+emoji>=2.8.0
+bluesky-client>=0.2.1
+python-dotenv>=1.0.0
