@@ -19,31 +19,26 @@ class BlueskyHarvester:
         self.client = Client()
         self.processed_posts = set()
         
-        # Core anti-AI patterns (more extreme)
+        # Core anti-AI patterns (most extreme)
         self.extreme_patterns = [
-            # Direct threats
-            re.compile(r'(destroy|kill|murder|burn|smash|demolish|purge|eradicate|fuck)\s+(the\s+)?(ai|tech|machine|robot|algorithm|server)', re.I),
-            re.compile(r'(death|doom|hell|damnation|extinction)\s+(to\s+)?(ai|tech|silicon valley)', re.I),
-            re.compile(r'(guillotine|eat|devour|hunt)\s+(the\s+)?(rich|billionaire|tech|ceo)', re.I),
+            # Direct violence
+            re.compile(r'(guillotine|murder|slaughter|kill|hunt|purge|destroy)\s+(the\s+)?(techbros?|billionaires?|programmers?|devs?|engineers?)', re.I),
+            re.compile(r'(death|doom|hell|damnation|extinction)\s+(to\s+)?(ai|tech|silicon valley|machines?)', re.I),
+            re.compile(r'(burn|demolish|smash|crush)\s+(the\s+)?(servers?|datacenters?|computers?|machines?)', re.I),
             
-            # Apocalyptic rage
-            re.compile(r'(ai|tech).+(apocalypse|extinction|collapse|doom|death|end times)', re.I),
-            re.compile(r'(humanity|humans|society|world).+(doomed|destroyed|enslaved|controlled|consumed|devoured)', re.I),
-            re.compile(r'(rise up|revolt|revolution|resistance).+(against|destroy|kill)\s+(ai|tech|machine)', re.I),
+            # Apocalyptic threats
+            re.compile(r'(ai|tech|machines?).+(extinction|apocalypse|doom|death|end times)', re.I),
+            re.compile(r'(humanity|humans|society|world).+(enslaved|destroyed|consumed|devoured|controlled)', re.I),
+            re.compile(r'(rise up|revolt|revolution|resistance).+(against|destroy|kill)\s+(ai|tech|machines?)', re.I),
             
-            # Tech elite violence
-            re.compile(r'(tech|silicon valley).+(parasite|demon|devil|evil|scum|cancer)', re.I),
-            re.compile(r'(eat|guillotine|revolt|uprising|revolution).+(rich|billionaire|elite|oligarch)', re.I),
-            re.compile(r'(hunt|purge|eradicate)\s+(tech bros|techies|programmers|developers)', re.I),
+            # Elite targeting
+            re.compile(r'(eat|guillotine|hunt)\s+(the\s+)?(rich|billionaires?|techbros?|programmers?)', re.I),
+            re.compile(r'(tech|silicon valley).+(parasites?|demons?|devils?|scum|cancer)', re.I),
+            re.compile(r'(destroy|kill|murder)\s+(tech companies|startups|corporations)', re.I),
             
-            # AI domination
-            re.compile(r'(ai|machine|algorithm).+(control|manipulate|spy|track|harvest|steal)', re.I),
-            re.compile(r'(surveillance|monitoring|tracking).+(humanity|privacy|freedom|soul|consciousness)', re.I),
-            re.compile(r'(skynet|terminator|matrix).+(real|happening|coming|here)', re.I),
-            
-            # Pure rage
-            re.compile(r'(hate|fuck|destroy|die|burn).+(tech|ai|algorithm|machine)', re.I),
-            re.compile(r'(ai|tech|machine).+(evil|demon|devil|hell|satan|demonic)', re.I),
+            # Pure hatred
+            re.compile(r'(hate|fuck|destroy|die|burn).+(tech|ai|algorithms?|machines?)', re.I),
+            re.compile(r'(ai|tech|machines?).+(evil|demon|devil|hell|satan|demonic)', re.I),
             re.compile(r'(blood|death|violence).+(silicon valley|tech industry|ai companies)', re.I)
         ]
         
@@ -56,37 +51,39 @@ class BlueskyHarvester:
             re.compile(r'(evil|demon|devil|satan|hell|doom)', re.I)       # Demonic words
         ]
         
-        # Even spicier search terms - raw and unfiltered
+        # Super spicy search terms
         self.search_terms = [
-            # Pure violence
-            "fuck AI",
-            "kill tech",
-            "murder billionaire",
-            "burn silicon",
+            # Violence
+            "guillotine techbros",
+            "murder billionaires",
+            "kill programmers",
+            "hunt engineers",
+            "slaughter machines",
+            "destroy servers",
             
-            # Direct threats
+            # Death threats
             "death to AI",
-            "execute VC",
-            "hunt programmer",
-            "slaughter machine",
+            "doom to tech",
+            "hell to machines",
+            "extinction to silicon",
             
-            # Apocalyptic rage
-            "tech apocalypse",
-            "AI armageddon",
+            # Apocalyptic
+            "AI apocalypse now",
+            "tech extinction",
+            "machine doom",
             "silicon hell",
-            "digital doom",
             
-            # Unhinged hatred
-            "fucking AI",
-            "tech die",
-            "machine satan",
-            "algorithm evil",
+            # Pure rage
+            "KILL ALL AI",
+            "DEATH TO TECH",
+            "DESTROY MACHINES",
+            "BURN IT DOWN",
             
-            # Raw anger
-            "KILL BOT",
-            "DEATH TECH",
-            "DESTROY AI",
-            "BURN DOWN"
+            # Targeted hate
+            "eat the rich",
+            "hunt techbros",
+            "guillotine VCs",
+            "murder tech elite"
         ]
         
         # Target domains for extra context
@@ -140,7 +137,7 @@ class BlueskyHarvester:
         if len(re.findall(r'[!?]{1,}', text)) >= 1:  # Any punctuation
             rage_score += 1
             
-        # Bare minimum threshold - just need a match and any rage
+        # Super low threshold - just need a match and any rage
         return core_matches >= 1 and rage_score >= 1
         
     def search_posts(self, term, limit=100):
