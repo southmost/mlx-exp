@@ -26,14 +26,14 @@ iters = -(-num_examples // batch_size) * epochs  # Ceiling division
 ## Hardware Performance Observations
 
 ### Memory Bandwidth Impact
-- Base M3: ~100GB/s bandwidth → ~150-200 tokens/sec
-- M3 Pro: Higher bandwidth → Should get ~300-400 tokens/sec
-- M3 Max: ~400GB/s bandwidth → ~500-700 tokens/sec
+- Base M3: ~100GB/s bandwidth → ~150-200 tokens/sec inference
+- M3 Pro: ~200GB/s bandwidth → ~170-200 tokens/sec training, ~340 tokens/sec inference
+- M3 Max: ~400GB/s bandwidth → ~500-700 tokens/sec inference
 
-Our M3 Pro setup with 18GB RAM is getting ~170 tokens/sec during training, which is expected because:
-1. Training requires both forward and backward passes (roughly 2x computation vs inference)
-2. Training has additional memory operations for gradients and optimizer states
-3. Memory bandwidth varies between different M3 Pro configurations
+Our M3 Pro setup with 18GB RAM is getting ~170 tokens/sec during training, which is expected given:
+1. Training requires forward + backward passes (roughly 2x computation vs inference)
+2. Memory bandwidth varies between M3 Pro configurations
+3. Additional overhead from gradient computation and optimizer updates
 
 ### Memory Usage Patterns
 - Peak memory: 16.7GB on 18GB system
