@@ -20,7 +20,7 @@ These speeds are normal! While MLX is newer and currently slower than CUDA, it h
 - LoRA (Low-Rank Adaptation) support
 - Metal performance optimizations
 - ChatML format support
-- Flexible dataset input
+- Flexible dataset input including from Hugging Face
 
 ## Memory-Optimized Training
 
