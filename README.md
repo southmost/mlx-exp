@@ -3,6 +3,15 @@
 A flexible fine-tuning pipeline for language models using Apple's MLX framework, optimized for Apple Silicon.
 I found that this usually works for me on a 2024 MacBook Pro with an M3 chip.
 
+## Performance Notes
+
+MLX performance varies significantly based on your specific M-series chip:
+- Base M3: ~150-200 tokens/sec (limited by 100GB/s memory bandwidth)
+- M3 Pro: ~300-400 tokens/sec (improved bandwidth)
+- M3 Max: ~500-700 tokens/sec (up to 400GB/s bandwidth)
+
+These speeds are normal! While MLX is newer and currently slower than CUDA, it has a unique advantage: unified memory means you can do deeper fine-tuning without running out of memory (it gracefully spills to swap if needed).
+
 ## Features
 
 - Native MLX quantization for optimal performance
@@ -13,29 +22,81 @@ I found that this usually works for me on a 2024 MacBook Pro with an M3 chip.
 - ChatML format support
 - Flexible dataset input
 
-## Quick Start Example
+## Memory-Optimized Training
 
-Here's a proven configuration that works well on a 18GB M3 MacBook Pro with a 3B parameter model:
+After some testing on a 18GB Apple Silicon Mac, here's what we found works best:
 
+```python
+def calculate_training_params(num_examples, batch_size=4, epochs=3):
+    """
+    Calculate optimal training parameters based on dataset size.
+    Tested on a 18GB M3 MacBook Pro.
+    
+    Args:
+        num_examples: Number of examples in your dataset
+        batch_size: Batch size (default 4 for 18GB RAM)
+        epochs: Number of passes through the data (default 3)
+    
+    Returns:
+        dict: Optimized training parameters
+    """
+    # Calculate iterations (ceiling division to see all examples)
+    iters_per_epoch = -(-num_examples // batch_size)
+    total_iters = iters_per_epoch * epochs
+    
+    return {
+        "batch_size": batch_size,
+        "iters": total_iters,
+        "learning_rate": 2e-4,  # Good default for 4-bit models
+        "num_layers": 1,        # Sweet spot for 3B models on 18GB RAM
+        "steps_per_eval": total_iters,  # Validate once at end
+        "val_batches": 2,       # Minimal validation to save memory
+        "steps_per_report": 10, # Progress updates every 10 steps
+        "save_every": total_iters  # Save only at the end
+    }
+
+# Example usage for a dataset with 300 examples:
+params = calculate_training_params(num_examples=300)
+"""
+This would output:
+{
+    'batch_size': 4,
+    'iters': 225,        # (300/4 = 75 iters/epoch * 3 epochs)
+    'learning_rate': 2e-4,
+    'num_layers': 1,
+    'steps_per_eval': 225,
+    'val_batches': 2,
+    'steps_per_report': 10,
+    'save_every': 225
+}
+"""
+```
+
+Using these parameters with a 3B model typically results in:
+- Peak memory usage: ~16.7GB
+- Training speed: ~170 tokens/sec
+- Training time: 15-20 minutes
+- Good convergence (training loss ~0.3)
+
+Note: These speeds are with minimal layer tuning (1 layer). If you tune more layers:
+- 8 layers + Q,K tuning: expect 1/4 these speeds
+- Full QKVO+MLP tuning: expect 1/8 these speeds
+But the model quality might improve enough to be worth it!
+
+Example command using these parameters:
 ```bash
 python train.py \
     --model "mlx-community/Llama-3.2-3B-Instruct-4bit" \
     --batch-size 4 \
-    --iters 222 \
+    --iters 225 \
     --learning-rate 2e-4 \
     --num-layers 1 \
     --grad-checkpoint \
-    --steps-per-eval 222 \
+    --steps-per-eval 225 \
     --val-batches 2 \
     --steps-per-report 10 \
-    --save-every 222
+    --save-every 225
 ```
-
-This configuration:
-- Uses about 16.7GB peak memory
-- Processes ~170 tokens/sec
-- Achieves good convergence (training loss ~0.3)
-- Takes about 15-20 minutes to train
 
 ## Setup
 
@@ -175,4 +236,4 @@ The model expects conversations in ChatML format:
 
 ---
 
-Hey! Just FYI - a lot of these tips and memory optimizations came from me chatting with Claude "3.6" Sonnet while trying to get this working on my M3 MacBook. We went through a bunch of trial and error together to find what actually works vs what just looks good on paper. The quick start example is exactly what worked for us!
+Hey! Just FYI - a lot of these tips and memory optimizations came from me chatting with Claude "3.6" Sonnet while trying to get this working on my M3 MacBook (and some stuff from the web). We went through a bunch of trial and error together to find what actually works vs what just looks good on paper. The example above is exactly what worked for us! If you have better tips, definitely DM me somewhere!
