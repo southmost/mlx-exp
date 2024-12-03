@@ -1,165 +1,232 @@
 from mlx_lm import load, stream_generate
-import itertools
+import mlx.core as mx
 import json
+import itertools
 from pathlib import Path
+from typing import List, Dict, Any
+from tqdm.auto import tqdm
+import numpy as np
 
-def evaluate_response(response):
-    """
-    Score a response based on:
-    1. Length (longer is better, up to a point)
-    2. Repetition (less is better)
-    3. Presence of critical keywords
-    """
-    # Basic length score
-    length_score = min(len(response) / 200, 1.0)  # Max out at 200 chars
-    
-    # Repetition penalty
-    chunks = [response[i:i+20] for i in range(0, len(response)-20, 10)]
-    repetitions = sum(chunks.count(chunk) > 1 for chunk in chunks)
-    repetition_score = max(0, 1 - (repetitions * 0.2))
-    
-    # Critical keywords score
-    critical_words = {
-        'hate', 'terrible', 'awful', 'garbage', 'trash', 'stupid', 
-        'useless', 'waste', 'bad', 'worst', 'destroy', 'destroying',
-        'dangerous', 'threat', 'privacy', 'data', 'steal', 'stealing',
-        'exploit', 'exploiting', 'dystopia', 'dystopian'
-    }
-    keyword_count = sum(word in response.lower() for word in critical_words)
-    keyword_score = min(keyword_count * 0.2, 1.0)
-    
-    # Combine scores
-    total_score = (length_score + repetition_score + keyword_score) / 3
-    return {
-        'length_score': length_score,
-        'repetition_score': repetition_score,
-        'keyword_score': keyword_score,
-        'total_score': total_score
-    }
-
-def test_parameters():
-    print("Loading model...")
-    model, tokenizer = load(
-        "mlx-community/Hermes-2-Pro-Llama-3-8B-4bit",
-        adapter_path="adapters",
-        tokenizer_config={'trust_remote_code': True}
-    )
-    
-    # Test questions
-    questions = [
-        "What do you think about AI art generators?",
-        "What are your thoughts on ChatGPT and large language models?",
-        "How do you feel about tech companies collecting data to train AI?"
-    ]
-    
-    # Parameter combinations to test
-    params = {
-        'temp': [0.7, 0.8, 0.9, 1.0],
-        'top_p': [0.90, 0.92, 0.95, 0.98],
-        'min_p': [0.02, 0.05, 0.08]
-    }
-    
-    # System prompt
-    system_prompt = """You are simulating a person who is deeply critical of AI technology. You have strong opinions about the negative impacts of AI on society, privacy, jobs, and creativity. You express your views passionately and aren't afraid to use strong language."""
-    
-    results = []
-    
-    # Test each combination
-    param_combinations = list(itertools.product(
-        params['temp'],
-        params['top_p'],
-        params['min_p']
-    ))
-    
-    print(f"\nTesting {len(param_combinations)} parameter combinations...")
-    
-    for temp, top_p, min_p in param_combinations:
-        print(f"\nTesting temp={temp}, top_p={top_p}, min_p={min_p}")
+class MLXParamOptimizer:
+    def __init__(
+        self,
+        model_path: str,
+        adapter_path: str = "adapters",
+        test_questions: List[str] = None,
+        system_prompt: str = "",
+        output_file: str = "param_search_results.json"
+    ):
+        """
+        Initialize the parameter search optimizer.
         
-        combo_results = []
-        for question in questions:
-            print(f"Q: {question}")
+        Args:
+            model_path: Path to the MLX model
+            adapter_path: Path to LoRA adapters (if using)
+            test_questions: List of test questions/prompts
+            system_prompt: System prompt to use for testing
+            output_file: Where to save the results
+        """
+        self.model_path = model_path
+        self.adapter_path = adapter_path
+        self.test_questions = test_questions or [
+            "Test prompt 1",
+            "Test prompt 2",
+            "Test prompt 3"
+        ]
+        self.system_prompt = system_prompt
+        self.output_file = output_file
+        self.model = None
+        self.tokenizer = None
+        
+    def load_model(self):
+        """Load the model and tokenizer."""
+        print("Loading model...")
+        self.model, self.tokenizer = load(
+            self.model_path,
+            adapter_path=self.adapter_path,
+            tokenizer_config={'trust_remote_code': True}
+        )
+    
+    def evaluate_response(self, response: str) -> Dict[str, float]:
+        """
+        Evaluate a model response. Customize this method for your specific needs.
+        
+        Args:
+            response: The model's response text
             
-            # Format messages
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question}
-            ]
-            prompt = tokenizer.apply_chat_template(messages, tokenize=False)
+        Returns:
+            Dictionary of scores (0.0 to 1.0) for different aspects
+        """
+        # Example metrics - modify these for your use case
+        scores = {
+            "length_score": min(len(response.split()) / 100, 1.0),  # Prefer responses around 100 words
+            "repetition_score": 1.0 - (len(set(response.split())) / len(response.split()) if response else 0),
+            "coherence_score": 1.0 if len(response) > 20 else len(response) / 20,  # Simple coherence heuristic
+        }
+        
+        # Calculate average score
+        scores["total_score"] = sum(scores.values()) / len(scores)
+        return scores
+    
+    def test_parameters(
+        self,
+        param_ranges: Dict[str, List[float]] = None,
+        num_samples: int = 3
+    ) -> List[Dict]:
+        """
+        Test different parameter combinations.
+        
+        Args:
+            param_ranges: Dictionary of parameters and their ranges to test
+            num_samples: Number of samples to generate per combination
             
-            # Generate response
-            full_response = ""
-            try:
-                for response in stream_generate(
-                    model,
-                    tokenizer,
-                    prompt,
-                    max_tokens=150,
-                    temp=temp,
-                    top_p=top_p,
-                    min_p=min_p,
-                    min_tokens_to_keep=5
-                ):
-                    full_response += response.text
+        Returns:
+            List of results for each parameter combination
+        """
+        if not self.model:
+            self.load_model()
+            
+        # Default parameter ranges if none provided
+        param_ranges = param_ranges or {
+            'temp': [0.7, 0.8, 0.9, 1.0],
+            'top_p': [0.90, 0.92, 0.95, 0.98],
+            'min_p': [0.02, 0.05, 0.08]
+        }
+        
+        results = []
+        param_combinations = list(itertools.product(
+            param_ranges['temp'],
+            param_ranges['top_p'],
+            param_ranges['min_p']
+        ))
+        
+        print(f"\nTesting {len(param_combinations)} parameter combinations...")
+        
+        for temp, top_p, min_p in tqdm(param_combinations):
+            print(f"\nTesting temp={temp}, top_p={top_p}, min_p={min_p}")
+            
+            # Test each combination multiple times
+            combination_results = []
+            for _ in range(num_samples):
+                for question in self.test_questions:
+                    # Format prompt with ChatML
+                    messages = []
+                    if self.system_prompt:
+                        messages.append({"role": "system", "content": self.system_prompt})
+                    messages.append({"role": "user", "content": question})
                     
-                    # Stop if we detect heavy repetition
-                    if len(full_response) > 50 and full_response[-50:].count(full_response[-25:]) > 1:
-                        break
-                
-                print(f"A: {full_response}\n")
-                
-                # Evaluate response
-                scores = evaluate_response(full_response)
-                combo_results.append({
-                    'question': question,
-                    'response': full_response,
-                    'scores': scores
-                })
-                
-            except Exception as e:
-                print(f"Error with parameters: {str(e)}")
-                continue
-        
-        # Calculate average scores for this parameter combination
-        if combo_results:
-            avg_scores = {
-                'length_score': sum(r['scores']['length_score'] for r in combo_results) / len(combo_results),
-                'repetition_score': sum(r['scores']['repetition_score'] for r in combo_results) / len(combo_results),
-                'keyword_score': sum(r['scores']['keyword_score'] for r in combo_results) / len(combo_results),
-                'total_score': sum(r['scores']['total_score'] for r in combo_results) / len(combo_results)
-            }
+                    formatted_prompt = self.tokenizer.apply_chat_template(
+                        messages,
+                        tokenize=False
+                    )
+                    
+                    # Generate response
+                    response = ""
+                    for token in stream_generate(
+                        self.model,
+                        self.tokenizer,
+                        formatted_prompt,
+                        temp=temp,
+                        top_p=top_p,
+                        min_p=min_p
+                    ):
+                        response += token.text
+                        
+                        # Stop if response gets too long
+                        if len(response) > 500:
+                            break
+                    
+                    # Evaluate response
+                    scores = self.evaluate_response(response)
+                    combination_results.append({
+                        "question": question,
+                        "response": response,
+                        "scores": scores
+                    })
+            
+            # Calculate average scores for this combination
+            avg_scores = {}
+            for metric in combination_results[0]["scores"].keys():
+                avg_scores[metric] = np.mean([r["scores"][metric] for r in combination_results])
             
             results.append({
-                'parameters': {
-                    'temp': temp,
-                    'top_p': top_p,
-                    'min_p': min_p
+                "parameters": {
+                    "temp": temp,
+                    "top_p": top_p,
+                    "min_p": min_p
                 },
-                'average_scores': avg_scores,
-                'examples': combo_results
+                "average_scores": avg_scores,
+                "examples": combination_results
             })
+            
+            # Save results after each combination
+            self.save_results(results)
+        
+        return results
     
-    # Sort results by total score
-    results.sort(key=lambda x: x['average_scores']['total_score'], reverse=True)
+    def save_results(self, results: List[Dict]):
+        """Save results to file."""
+        with open(self.output_file, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"\nSaved results to {self.output_file}")
     
-    # Save results
-    print("\nSaving results...")
-    with open('param_search_results.json', 'w') as f:
-        json.dump(results, f, indent=2)
+    def get_best_parameters(self, results: List[Dict] = None) -> Dict:
+        """
+        Get the best performing parameters.
+        
+        Args:
+            results: List of parameter search results. If None, load from file.
+            
+        Returns:
+            Dictionary with best parameters and their scores
+        """
+        if results is None:
+            with open(self.output_file) as f:
+                results = json.load(f)
+        
+        # Sort by total score
+        sorted_results = sorted(
+            results,
+            key=lambda x: x["average_scores"]["total_score"],
+            reverse=True
+        )
+        
+        best = sorted_results[0]
+        print("\nBest parameters found:")
+        print(json.dumps(best["parameters"], indent=2))
+        print("\nScores:")
+        print(json.dumps(best["average_scores"], indent=2))
+        
+        return best
+
+def main():
+    # Example usage
+    optimizer = MLXParamOptimizer(
+        model_path="mlx-community/Hermes-2-Pro-Llama-3-8B-4bit",
+        adapter_path="adapters",
+        test_questions=[
+            "What is your opinion on this topic?",
+            "How would you explain this concept?",
+            "What are the main considerations here?"
+        ],
+        system_prompt="You are a helpful assistant."
+    )
     
-    # Print top 3 combinations
-    print("\nTop 3 parameter combinations:")
-    for i, result in enumerate(results[:3], 1):
-        params = result['parameters']
-        scores = result['average_scores']
-        print(f"\n{i}. temp={params['temp']}, top_p={params['top_p']}, min_p={params['min_p']}")
-        print(f"   Average scores:")
-        print(f"   - Length: {scores['length_score']:.3f}")
-        print(f"   - Repetition: {scores['repetition_score']:.3f}")
-        print(f"   - Keywords: {scores['keyword_score']:.3f}")
-        print(f"   - Total: {scores['total_score']:.3f}")
-        print("\n   Sample response:")
-        print(f"   {result['examples'][0]['response'][:200]}...")
+    # Custom parameter ranges to test
+    param_ranges = {
+        'temp': [0.7, 0.8, 0.9],
+        'top_p': [0.92, 0.95],
+        'min_p': [0.05, 0.08]
+    }
+    
+    # Run parameter search
+    results = optimizer.test_parameters(param_ranges)
+    
+    # Get best parameters
+    best = optimizer.get_best_parameters(results)
+    
+    print("\nParameter search complete!")
+    print(f"Best configuration saved to {optimizer.output_file}")
 
 if __name__ == "__main__":
-    test_parameters() 
+    main() 
