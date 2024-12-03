@@ -30,10 +30,10 @@ iters = -(-num_examples // batch_size) * epochs  # Ceiling division
 - M3 Pro: Higher bandwidth → Should get ~300-400 tokens/sec
 - M3 Max: ~400GB/s bandwidth → ~500-700 tokens/sec
 
-Our M3 Pro setup with 18GB RAM is getting ~170 tokens/sec, which is lower than I think it should be. This might be due to:
-1. Single layer fine-tuning (vs 8+ layers in benchmarks)
-2. Conservative batch size (4 vs potential for higher)
-3. Memory bandwidth differences between configurations
+Our M3 Pro setup with 18GB RAM is getting ~170 tokens/sec during training, which is expected because:
+1. Training requires both forward and backward passes (roughly 2x computation vs inference)
+2. Training has additional memory operations for gradients and optimizer states
+3. Memory bandwidth varies between different M3 Pro configurations
 
 ### Memory Usage Patterns
 - Peak memory: 16.7GB on 18GB system
