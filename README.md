@@ -175,4 +175,4 @@ The model expects conversations in ChatML format:
 
 ---
 
-Hey! Just FYI - a lot of these tips and memory optimizations came from me chatting with Claude-3 Sonnet while trying to get this working on my M3 MacBook. We went through a bunch of trial and error together to find what actually works vs what just looks good on paper. The quick start example is exactly what worked for us!
+Hey! Just FYI - a lot of these tips and memory optimizations came from me chatting with Claude "3.6" Sonnet while trying to get this working on my M3 MacBook. We went through a bunch of trial and error together to find what actually works vs what just looks good on paper. The quick start example is exactly what worked for us!
